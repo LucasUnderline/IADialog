@@ -1,36 +1,131 @@
 import PySimpleGUI as sg
+from speech2Text import Speech2Text
+import threading
+from g4f.client import Client
 
-WINDOW_SIZE = (520, 140)
-
-# All the stuff inside your window.
-layout = [  [sg.Text('Nice to meet you! say anything to Ia, be polite please')],
-            [sg.Text('For better Recognise and results, speak in english.')],
-            [sg.Text('How Ia can call you?'), sg.InputText(key="name_input")],
-            [sg.HorizontalSeparator(color='grey')],
-            [sg.ProgressBar(100, key="progress_bar", size=(100, 10))],
-            [sg.Button('Start Talking', key="main_button", size=50), sg.Button('Restart', key="restart_button", size=50)] ]
-
-# Create the Window
-sg.theme('DarkGrey15')
-window = sg.Window('IaDialog', layout, size=WINDOW_SIZE)
-
-# Event Loop to process "events" and get the "values" of the inputs
-while True:
-    event, values = window.read()
-    
-    if event == sg.WIN_CLOSED: # if user closes window
-        break
-
-    if event == 'main_button':
-        if window['main_button'].get_text() == 'Start Talk': #IF START TALK AS PRESSED, DO ANYTHING AND CHANGE BUTTON
-            print('Started')
-            window['main_button'].Update(text="Stop Talk")
-            continue
-
-        if window['main_button'].get_text() == 'Stop Talk': #IF STOP TALK AS PRESSED, DO ANYTHING AND CHANGE BUTTON
-            print('Stoped')
-            window['main_button'].Update(text="Start Talk")
-            continue
+s = Speech2Text()
 
 
-window.close()
+
+
+class IaDialog():
+    def __init__(self) -> None:
+        self.__gui_initialized = False
+
+        self.__user_name = None
+        self.__speech_text = None
+
+        self.__dialog_history = []
+        pass
+
+
+    def __init_gui(self):
+        WINDOW_SIZE = (440, 140)
+
+        main_button_text_list = ['Start Talk', 'Stop Talk', 'Stopping', 'Processing', 'Stop Response']
+        
+        collumn_1 = [   [sg.Text('Nice to meet you! say anything to ia, be polite please')],
+                        [sg.Text('For better Recognise and results, speak in english.')],
+                        [sg.Text('How ia can call you?'), sg.InputText(default_text="Pedro",key="name_input", size=25)],
+                        [sg.HorizontalSeparator(color='grey')],
+                        [sg.ProgressBar(100, key="progress_bar", size=(20, 10))],
+                        [sg.Button('Start Talk', key="main_button", size=20), sg.Button('Restart', key="restart_button", size=20)]  ]
+        collumn_2 = [
+                        [sg.Slider(key="volume")]
+            ]
+
+        # All the stuff inside your window.
+        layout = [
+                    [sg.Column(collumn_1), sg.Column(collumn_2)]
+            ]
+        
+        
+        sg.theme('DarkGrey15')
+
+        # Create the Window
+        self.__gui_window = sg.Window('IaDialog', layout, size=WINDOW_SIZE)
+        window = self.__gui_window
+
+        main_button = window['main_button']
+        restart_button = window['restart_button']
+        name_input = window['name_input']
+        progress_bar = window['progress_bar']
+
+        self.__gui_initialized = True
+
+
+        # Event Loop to process "events" and get the "values" of the inputs
+        while True:
+            event, values = window.read()
+            
+            if event == sg.WIN_CLOSED: # if user closes window
+                break
+
+            if event == 'main_button':
+                if main_button.get_text() == 'Start Talk': #IF START TALK AS PRESSED, DO ANYTHING AND CHANGE BUTTON
+                    s.start(noise_range=0.6, _callback=self.__get_text_of_speech)
+                    main_button.Update(text=main_button_text_list[1])
+                    continue
+
+                if main_button.get_text() == 'Stop Talk': #IF STOP TALK AS PRESSED, DO ANYTHING AND CHANGE BUTTON
+                    s.stop_listening()
+                    main_button.Update(text=main_button_text_list[2])
+                    continue
+
+
+        window.close()
+
+
+    def __get_text_of_speech(self, text):
+        self.__speech_text = text
+
+        
+    def __format_message(self):
+        if len(self.__dialog_history) <= 0:
+            context = 'without, context. Is that the begin of the dialog.'
+        else:
+            for each in self.__dialog_history:
+                context += f'user: {each[0]}. You: {each[1]};'
+
+        message = f'''Hello AI, please respond to {self.__user_name}'s message: {self.__speech_text}.
+                        **Context:**
+                        {context}
+
+                        **Instructions:**
+                        Your response should be concise, coherent with the conversation, and demonstrate empathy and natural language. Imagine you're chatting with a friend. Please keep your response brief and to the point.
+
+                        **Response format:**
+                        Enclose your response in quotation marks. After the response, include a summary of what the user said in parentheses and a summary of your response in brackets. 
+
+                        **Example:**
+                        "Hey there, hope you're doing okay. Want to talk about it? Maybe we can figure something out together."
+                        (User expressed negative feelings) [AI suggests talking and helping the user]
+
+                        **Your response:**'''
+        return message
+
+
+    def __ia_client(self, text):
+        client = Client()
+        response = client.chat.completions.create(
+            model="gemini-pro",
+            messages=[{"role": "friend", "content": f'{text}'}],
+        )
+        print(response.choices[0].message.content)
+
+
+    def get_ia_response(self):
+        text = self.__format_message()
+        x = threading.Thread(target=self.__ia_client, args=[text])
+        x.start()
+
+
+    def start(self):
+        self.__init_gui()
+
+
+app = IaDialog()
+app.start()
+
+
+
