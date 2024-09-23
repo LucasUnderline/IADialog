@@ -4,17 +4,17 @@ import threading
 
 
 
-class speech2Text:
+class Speech2Text:
     def __init__(self) -> None:
-        self.__listening == False
+        self.__listening = False
         self.__text = ''
 
     
-    def __speech2Text(self, noise_range=0.2, _callback=None) -> None:
+    def __speech2Text(self, noise_range=0.2, _callback=None):
         # Initialize the recognizer 
         r = sr.Recognizer()
-        while True:  
-            running += 1  
+        print('recording')
+        while True:   
             # Exception handling to handle
             # exceptions at the runtime
             try:
@@ -31,7 +31,7 @@ class speech2Text:
                     text = r.recognize_google(audio)
                     text = text.lower()
 
-                    self.__text += text 
+                    self.__text += ' ' + text 
 
                     print('Did you say: ', text)
                     
@@ -52,6 +52,8 @@ class speech2Text:
 
     
     def start(self, noise_range=0.2, _callback=None):
+        print('start')
+        self.__text = ''
         self.__listening = True
 
         x = threading.Thread(target=self.__speech2Text, args=[noise_range, _callback])
@@ -59,3 +61,7 @@ class speech2Text:
 
     def stop_listening(self):
         self.__listening = False
+
+    def get_text(self):
+        return self.__text
+    

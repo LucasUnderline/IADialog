@@ -10,9 +10,17 @@ s = Speech2Text()
 
 class IaDialog():
     def __init__(self) -> None:
-        self.__gui_initialized = False
-
+        self.__appStateList = [
+            'Already',
+            'Talking',
+            'Stopping_rec',
+            'Ia_response',
+            'Generating_voice',
+            'Playing_response',
+        ]
+        self.__appState = self.appStateList[0]
         self.__user_name = None
+
         self.__speech_text = None
 
         self.__dialog_history = []
@@ -21,8 +29,6 @@ class IaDialog():
 
     def __init_gui(self):
         WINDOW_SIZE = (440, 140)
-
-        main_button_text_list = ['Start Talk', 'Stop Talk', 'Stopping', 'Processing', 'Stop Response']
         
         collumn_1 = [   [sg.Text('Nice to meet you! say anything to ia, be polite please')],
                         [sg.Text('For better Recognise and results, speak in english.')],
@@ -51,36 +57,68 @@ class IaDialog():
         name_input = window['name_input']
         progress_bar = window['progress_bar']
 
-        self.__gui_initialized = True
-
+        main_button_text_list = ['Start Talk', 'Stop Talk', 'Stopping', 'Processing', 'Stop Response']
 
         # Event Loop to process "events" and get the "values" of the inputs
         while True:
             event, values = window.read()
             
+
             if event == sg.WIN_CLOSED: # if user closes window
                 break
 
             if event == 'main_button':
-                if main_button.get_text() == 'Start Talk': #IF START TALK AS PRESSED, DO ANYTHING AND CHANGE BUTTON
-                    s.start(noise_range=0.6, _callback=self.__get_text_of_speech)
+                if self.__appState == self.__appStateList[0]: # app is 0-already
+                    s.start(noise_range=0.6, _callback=self.__get_ia_response)
                     main_button.Update(text=main_button_text_list[1])
                     continue
 
-                if main_button.get_text() == 'Stop Talk': #IF STOP TALK AS PRESSED, DO ANYTHING AND CHANGE BUTTON
+                if self.__appState == self.__appStateList[1]: # app is 1-Talking
                     s.stop_listening()
                     main_button.Update(text=main_button_text_list[2])
                     continue
 
 
+
+
+
+            # self.__appStateList = [     main_button_text_list = [
+            #     0 'Already',                  0 'Start Talk', 
+            #     1 'Talking',                  1 'Stop Talk', 
+            #     2 'Stopping_rec',             2 'Stopping', 
+            #     3 'Ia_response',              3 'Processing', 
+            #     4 'Generating_voice',         4 'Stop Response'
+            #     5 'Playing_response',        ]
+            # ]
+
+            if self.__appState == self.__appStateList[0]: # app is 0-already, button is active and 0-'Start Talk'
+                main_button.Update(text=main_button_text_list[0], disabled=False)
+
+            if self.__appState == self.__appStateList[1]: # app is 1-Talking, button is active and 1-'Stop Talk'
+                main_button.Update(text=main_button_text_list[1], disabled=False)
+
+            if self.__appState == self.__appStateList[2]: # app is 2-Stopping_rec, button is disable and 2-'Stopping'
+                main_button.Update(text=main_button_text_list[2], disabled=True)
+
+            if self.__appState == self.__appStateList[3]: # app is 3-Ia_response, button is disable and 3-'Processing'
+                main_button.Update(text=main_button_text_list[3], disabled=True)
+
+            if self.__appState == self.__appStateList[4]: # app is 4-Generating_voice, button is disable and 3-'Processing'
+                main_button.Update(text=main_button_text_list[3], disabled=True)
+
+            if self.__appState == self.__appStateList[5]: # app is 5-Playing_response, button is active and 4-'Stop Response'
+                main_button.Update(text=main_button_text_list[4], disabled=False)
+
+
         window.close()
 
-
-    def __get_text_of_speech(self, text):
-        self.__speech_text = text
+    
+    def __change_app_state_to(self, appStateListIndex:int, window):
+        self.__appState = self.appStateList[appStateListIndex]
+        window.refresh()
 
         
-    def __format_message(self):
+    def __format_message(self, message):
         if len(self.__dialog_history) <= 0:
             context = 'without, context. Is that the begin of the dialog.'
         else:
@@ -109,13 +147,13 @@ class IaDialog():
         client = Client()
         response = client.chat.completions.create(
             model="gemini-pro",
-            messages=[{"role": "friend", "content": f'{text}'}],
+            messages=[{"role": "user", "content": f'{text}'}],
         )
         print(response.choices[0].message.content)
 
 
-    def get_ia_response(self):
-        text = self.__format_message()
+    def __get_ia_response(self, message):
+        text = self.__format_message(message)
         x = threading.Thread(target=self.__ia_client, args=[text])
         x.start()
 
