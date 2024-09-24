@@ -1,10 +1,20 @@
 import PySimpleGUI as sg
-from speech2Text import Speech2Text
 import threading
+import re
+from speech2Text import Speech2Text
 from g4f.client import Client
 
-s = Speech2Text()
+import os
 
+import requests
+
+from pygame import mixer, time
+import pygame
+
+
+
+s = Speech2Text()
+elevenlabs_api_key = os.environ.get('ELEVENLABS_API_KEY')
 
 
 
@@ -13,7 +23,7 @@ class IaDialog():
         self.__user_name = None
         self.__speech_text = None
         self.__dialog_history = []
-
+        self.__ia_response = None
 
         self.__main_button_text_list = ['Start Talk', 'Stop Talk', 'Stopping', 'Processing', 'Stop Response']
         pass
@@ -24,9 +34,9 @@ class IaDialog():
         
         collumn_1 = [   [sg.Text('Nice to meet you! say anything to ia, be polite please')],
                         [sg.Text('For better Recognise and results, speak in english.')],
-                        [sg.Text('How ia can call you?'), sg.InputText(default_text="Pedro",key="name_input", size=25)],
+                        [sg.Text('How ia can call you?'), sg.InputText(default_text="João",key="name_input", size=25)],
                         [sg.HorizontalSeparator(color='grey')],
-                        [sg.ProgressBar(100, key="progress_bar", size=(20, 10))],
+                        [sg.ProgressBar(4, key="progress_bar", size=(20, 10))],
                         [sg.Button('Start Talk', key="main_button", size=20), sg.Button('Restart', key="restart_button", size=20)]  ]
         collumn_2 = [
                         [sg.Slider(key="volume")]
@@ -61,6 +71,7 @@ class IaDialog():
 
             if event == 'main_button':
                 if main_button.get_text() == self.__main_button_text_list[0]: # app is 0-already
+                    self.__user_name = values['name_input']
                     s.start(noise_range=0.6, _callback=self.__get_ia_response)
                     main_button.Update(text=self.__main_button_text_list[1])
                     continue
@@ -73,13 +84,15 @@ class IaDialog():
 
         window.close()
 
-    
-    def __change_app_state_to(self, appStateListIndex:int, window):
-        self.__appState = self.appStateList[appStateListIndex]
-        window.refresh()
-
         
-    def __format_message(self, message):
+
+    def __format_message(self, message:str):
+        if self.__user_name == '' or self.__user_name == None:
+            self.__user_name = 'Friend'
+
+        if self.__speech_text == '' or self.__speech_text == None:
+            self.__speech_text = "Hello!"
+
         if len(self.__dialog_history) <= 0:
             context = 'without, context. Is that the begin of the dialog.'
         else:
@@ -104,24 +117,82 @@ class IaDialog():
         return message
 
 
-    def __ia_client(self, text):
+    def __ia_client(self, text:str, _callback=None):
         client = Client()
         response = client.chat.completions.create(
             model="gemini-pro",
             messages=[{"role": "user", "content": f'{text}'}],
         )
         print(response.choices[0].message.content)
+        self.__format_ia_response(response.choices[0].message.content)
 
+        if _callback != None:
+            _callback(self.__ia_response)
+        
 
     def __get_ia_response(self, message):
-        text = self.__format_message(message)
-        x = threading.Thread(target=self.__ia_client, args=[text])
-        x.start()
-
         self.__gui_window['main_button'].Update(text=self.__main_button_text_list[3])
 
+        text = self.__format_message(message)
+        x = threading.Thread(target=self.__ia_client, args=[text, self.__text2speech])
+        x.start()
+
+        
+    def __format_ia_response(self, response):
+        parentheses_pattern = r'\((.*?)\)'
+        bracket_pattern = r'\[(.*?)\]'
+        quotes_pattern = r'\"(.*?)\"'
+
+        parentheses_text = re.findall(parentheses_pattern, response)
+        bracket_text = re.findall(bracket_pattern, response)
+        quotes_text = re.findall(quotes_pattern, response)
+
+
+        self.__dialog_history.append((parentheses_text, bracket_text))
+        self.__ia_response = quotes_text
+
+    def __elevenlabs_request(self, text, _callback=None):
+        CHUNK_SIZE = 1024
+        url = "https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL"
+
+        headers = {
+        "Accept": "audio/mpeg",
+        "Content-Type": "application/json",
+        "xi-api-key": f'{elevenlabs_api_key}',
+        }
+
+        data = {
+        "text": f'{text}',
+        "model_id": "eleven_monolingual_v1",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.5
+        }
+        }
+
+        response = requests.post(url, json=data, headers=headers)
+        with open('output.mp3', 'wb') as f:
+            for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
+                if chunk:
+                    f.write(chunk)
+
+        if _callback != None:
+            _callback('output.mp3')
+
+    def __text2speech(self, text):
+        x = threading.Thread(target=self.__elevenlabs_request, args=[text, self.__play_response_audio])
+        x.start()
+
+
+    def __play_response_audio(self, file):
+        audio = mixer.Sound(file)
+        audio_channel = mixer.Channel(2)
+        audio_channel.play(audio)
 
     def start(self):
+        pygame.init()
+        mixer.init()
+
         self.__init_gui()
 
 
