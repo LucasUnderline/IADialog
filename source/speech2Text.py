@@ -1,67 +1,74 @@
 import speech_recognition as sr
-import pyttsx3
-import threading
+import pyaudio
+import wave
 
+
+FORMAT = pyaudio.paInt16
+CHANNELS = 2
+RATE = 44100
+CHUNK = 1024
 
 
 class Speech2Text:
     def __init__(self) -> None:
+        self.__max_recording_time = 30
+        self.__output_file_path = 'output_files/record_output.mp3'
+
         self.__listening = False
-        self.__text = ''
 
-    
-    def __speech2Text(self, noise_range=0.2, _callback=None):
-        # Initialize the recognizer 
-        r = sr.Recognizer()
-        print('recording')
-        while True:   
-            # Exception handling to handle
-            # exceptions at the runtime
-            try:
-                # use the microphone as source for input.
-                with sr.Microphone() as mic:       
-                    # adjust the energy threshold based on
-                    # the surrounding noise level 
-                    r.adjust_for_ambient_noise(mic, noise_range)
-                    
-                    #listens for the user's input 
-                    audio = r.listen(mic, timeout=30)
-                    
-                    # Using google to recognize audio
-                    text = r.recognize_google(audio)
-                    text = text.lower()
-
-                    self.__text += ' ' + text 
-
-                    print('Did you say: ', text)
-                    
-            except sr.RequestError as e:
-                print('Could not request results; {0}'.format(e))
-                break
-                
-            except sr.UnknownValueError:
-                print('unknown error occurred')
-                break
-
+    def __record_audio(self):
+        audio = pyaudio.PyAudio()
+        
+        # start Recording
+        stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+        print ("recording...")
+        frames = []
+        for i in range(0, int(RATE / CHUNK * self.__max_recording_time)):
+            data = stream.read(CHUNK)
+            frames.append(data)
             if not self.__listening:
                 break
+        print ("finished recording")
+    
+        # stop Recording
+        stream.stop_stream()
+        stream.close()
+        audio.terminate()
+        
+        waveFile = wave.open(self.__output_file_path, 'wb')
+        waveFile.setnchannels(CHANNELS)
+        waveFile.setsampwidth(audio.get_sample_size(FORMAT))
+        waveFile.setframerate(RATE)
+        waveFile.writeframes(b''.join(frames))
+        waveFile.close()
 
+        return self.__output_file_path
+
+    def __speech2Text(self, wave_file, noise_range=0.2, _callback=None):
+        # Initialize the recognizer 
+        r = sr.Recognizer()
+        file = sr.AudioFile(wave_file)
+
+        with file as source:
+            audio = r.record(source)
+            r.adjust_for_ambient_noise(source, noise_range)
+        try:
+            text = r.recognize_google(audio)
+            print("Text: "+ text)
+        except Exception as e:
+            print("Exception: "+str(e))
         
         if _callback != None:
-            _callback(self.__text)
+            _callback(text)
 
     
-    def start(self, noise_range=0.2, _callback=None):
+    def start(self, noise_range, _callback):
         print('start')
-        self.__text = ''
         self.__listening = True
 
-        x = threading.Thread(target=self.__speech2Text, args=[noise_range, _callback])
-        x.start()
+        output_path = self.__record_audio()
+        self.__speech2Text(output_path, noise_range, _callback)
 
     def stop_listening(self):
         self.__listening = False
-
-    def get_text(self):
-        return self.__text
     

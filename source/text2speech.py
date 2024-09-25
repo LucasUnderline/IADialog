@@ -11,7 +11,7 @@ class Text2speech:
   def __init__(self) -> None:
     self.__voice_id = "EXAVITQu4vr4xnSDxMaL"
     self.__request_url = "https://api.elevenlabs.io/v1/text-to-speech/" + self.__voice_id
-    self.__output_file_location = 'output.mp3'
+    self.__output_file_path = 'output_files/elevenlabs_output.mp3'
 
 
   def __api_request(self, text):
@@ -22,7 +22,7 @@ class Text2speech:
     }
 
     data = {
-      "text": "Born and raised in the charming south",
+      "text": f'{text}',
       "model_id": "eleven_monolingual_v1",
       "voice_settings": {
       "stability": 0.5,
@@ -31,7 +31,7 @@ class Text2speech:
     }
 
     response = requests.post(self.__request_url, json=data, headers=headers)
-    with open(self.__output_file_location, 'wb') as f:
+    with open(self.__output_file_path, 'wb') as f:
       for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
         if chunk:
           f.write(chunk)
@@ -39,9 +39,9 @@ class Text2speech:
 
   def config(self, **kwargs):
     self.__voice_id = kwargs.get('voice_id', 'EXAVITQu4vr4xnSDxMaL')
-    self.__output_file_location = kwargs.get('output_file_location', 'EXAVITQu4vr4xnSDxMaL')
+    self.__output_file_path = kwargs.get('output_file_location', 'output.mp3')
 
 
   def get_voice(self, text:str) -> str:
     self.__api_request(text)
-    return self.__output_file_location
+    return self.__output_file_path

@@ -17,7 +17,7 @@ class gpt:
             messages=[{"role": f'{self.__gpt_role}', "content": f'{text}'}],
         )
         print(response.choices[0].message.content)
-        return
+        return response.choices[0].message.content
 
     def config(self, **kwargs):
         model = kwargs.get('model', "gemini-pro")
