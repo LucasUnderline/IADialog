@@ -1,31 +1,47 @@
+import os
+import requests
 from elevenlabs import VoiceSettings
 from elevenlabs.client import ElevenLabs
-import os
 
 elevenlabs_api_key = os.environ.get('ELEVENLABS_API_KEY')
 
-import requests
-
 CHUNK_SIZE = 1024
-url = "https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL"
+ 
+class Text2speech:
+  def __init__(self) -> None:
+    self.__voice_id = "EXAVITQu4vr4xnSDxMaL"
+    self.__request_url = "https://api.elevenlabs.io/v1/text-to-speech/" + self.__voice_id
+    self.__output_file_location = 'output.mp3'
 
-headers = {
-  "Accept": "audio/mpeg",
-  "Content-Type": "application/json",
-  "xi-api-key": f'{elevenlabs_api_key}',
-}
 
-data = {
-  "text": "Born and raised in the charming south",
-  "model_id": "eleven_monolingual_v1",
-  "voice_settings": {
-    "stability": 0.5,
-    "similarity_boost": 0.5
-  }
-}
+  def __api_request(self, text):
+    headers = {
+      "Accept": "audio/mpeg",
+      "Content-Type": "application/json",
+      "xi-api-key": f'{elevenlabs_api_key}',
+    }
 
-response = requests.post(url, json=data, headers=headers)
-with open('output.mp3', 'wb') as f:
-    for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
+    data = {
+      "text": "Born and raised in the charming south",
+      "model_id": "eleven_monolingual_v1",
+      "voice_settings": {
+      "stability": 0.5,
+      "similarity_boost": 0.5
+    }
+    }
+
+    response = requests.post(self.__request_url, json=data, headers=headers)
+    with open(self.__output_file_location, 'wb') as f:
+      for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
         if chunk:
-            f.write(chunk)
+          f.write(chunk)
+
+
+  def config(self, **kwargs):
+    self.__voice_id = kwargs.get('voice_id', 'EXAVITQu4vr4xnSDxMaL')
+    self.__output_file_location = kwargs.get('output_file_location', 'EXAVITQu4vr4xnSDxMaL')
+
+
+  def get_voice(self, text:str) -> str:
+    self.__api_request(text)
+    return self.__output_file_location
