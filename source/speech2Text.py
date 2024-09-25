@@ -52,11 +52,11 @@ class Speech2Text:
         with file as source:
             audio = r.record(source)
             r.adjust_for_ambient_noise(source, noise_range)
-        try:
-            text = r.recognize_google(audio)
-            print("Text: "+ text)
-        except Exception as e:
-            print("Exception: "+str(e))
+            try:
+                text = r.recognize_google(audio)
+                print("Text: "+ text)
+            except Exception as e:
+                print("Exception: "+str(e))
         
         if _callback != None:
             _callback(text)
