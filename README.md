@@ -1,5 +1,5 @@
 
-## **AI Chatbot Application**
+## **AI Dialog Application**
 
 ### **Overview**
 This Python application provides a simple and interactive interface for conversing with an AI. It utilizes various libraries and APIs to achieve a seamless user experience.
