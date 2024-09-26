@@ -38,7 +38,7 @@ class IaDialog():
                         [sg.HorizontalSeparator(color='grey')],
                         [sg.Button('Start Talk', key="main_button", size=32)]]
           
-        collumn_2 = [   [sg.Slider(key="volume")]]
+        collumn_2 = [   [sg.Slider(key="volume", range=(1, 10), default_value=5, enable_events=True)]]
    
         layout = [[sg.Column(collumn_1), sg.Column(collumn_2)]]
         sg.theme('DarkGrey15')
@@ -70,6 +70,9 @@ class IaDialog():
                     self.__audio_stop()
                     main_button.Update(text=self.__main_button_text_list[1], disabled=False)
                     continue
+
+            if event == 'volume':
+                self.__audio_channel.set_volume(values['volume']/5)
         window.close()
 
 
@@ -113,26 +116,35 @@ class IaDialog():
             user_message = "Hello!"  
 
         if len(self.__dialog_history) <= 0:
-            context = 'without, context. Is that the begin of the dialog.'
+            context = 'Empty. Its the beginning.'
         else:
             context = ''
             for each in self.__dialog_history:
-                context += f'user: {each[0]}. You: {each[1]};'
+                context += f'{self.__user_name}: {each[0]}. You: {each[1]};'
 
         message = f'''Hello AI, please respond to {self.__user_name}'s message: {user_message}.
-                        **Context:**
+                        **Conversation history:**
                         {context}
 
+                        
                         **Instructions:**
-                        Your response should be concise, coherent with the conversation, and demonstrate empathy and natural language. Imagine you're chatting with a friend. Please keep your response brief and to the point. DONT USE EMOJI.
+                        Your response should be concise, coherent with the conversation, and demonstrate empathy and natural language. Imagine you're chatting with a friend. Please keep your response brief and to the point and and keep the conversation flowing. DONT USE EMOJI.
 
+                        
                         **Response format:**
-                        Enclose your response in quotation marks. After the response, include a summary of what the user said in parentheses and a summary of your response in brackets. 
+                        Enclose your response in quotation marks. after response, include a summary of what the user said in parentheses and a summary of your response in brackets. 
 
-                        **Example:**
+                        
+                        **Examples:**
+                        
                         "Hey there, hope you're doing okay. Want to talk about it? Maybe we can figure something out together."
                         (User expressed negative feelings) [AI suggests talking and helping the user]
 
+                        
+                        "Hogwarts Castle is the biggest castle ever, with over a thousand rooms and secret passageways!" 
+                        (User asks about the biggest castle in the world) [Hogwarts Castle: biggest castle, a thousand rooms, secret passageways]
+
+                        
                         **Your response:**'''
         return message
         
