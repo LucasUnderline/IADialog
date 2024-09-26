@@ -41,6 +41,7 @@ lz4==4.3.3
 MarkupSafe==2.1.5
 multidict==6.1.0
 nest-asyncio==1.6.0
+numpy==2.1.1
 pillow==10.4.0
 platformdirs==4.3.6
 plyer==2.1.0

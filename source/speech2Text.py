@@ -16,6 +16,7 @@ class Speech2Text:
 
         self.__listening = False
 
+    #record audio from users mic
     def __record_audio(self):
         audio = pyaudio.PyAudio()
         
@@ -44,6 +45,7 @@ class Speech2Text:
 
         return self.__output_file_path
 
+    #get text from audio file
     def __speech2Text(self, wave_file, noise_range=0.2, _callback=None):
         # Initialize the recognizer 
         r = sr.Recognizer()
@@ -61,9 +63,8 @@ class Speech2Text:
         if _callback != None:
             _callback(text)
 
-    
+    #start the class
     def start(self, noise_range, _callback):
-        print('start')
         self.__listening = True
 
         output_path = self.__record_audio()

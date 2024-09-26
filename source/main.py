@@ -1,14 +1,12 @@
 import PySimpleGUI as sg
 import threading
 import re
-import os
 import pygame
 from pygame import mixer
 
 from speech2Text import Speech2Text
 from gpt import gpt
 from text2speech import Text2speech
-
 
 
 
@@ -20,18 +18,17 @@ g = gpt()
 
 class IaDialog():
     def __init__(self) -> None:
-        self.__my_threads = []
         self.__user_name = None
-        self.__dialog_history = []
+        self.__dialog_history = [] #list with tuples
         self.__main_button_text_list = ['Start Talk', 'Stop Talk', 'Stopping', 'Processing']
         self.__audio_channel = None
-        self.__playing_audio = False
         pass
         
 
-    def __init_gui(self):
+    def __init_gui(self) -> None:
         WINDOW_SIZE = (440, 140)
 
+        #set collumns of GUI
         collumn_1 = [   [sg.Text('Nice to meet you! say anything to ia, be polite please')],
                         [sg.Text('For better Recognise and results, speak in english.')],
                         [sg.Text('How ia can call you?'), sg.InputText(default_text="João",key="name_input", size=25)],
@@ -40,9 +37,11 @@ class IaDialog():
           
         collumn_2 = [   [sg.Slider(key="volume", range=(1, 10), default_value=5, enable_events=True)]]
    
+        #apply collumns to layout and set theme
         layout = [[sg.Column(collumn_1), sg.Column(collumn_2)]]
         sg.theme('DarkGrey15')
 
+        #setting GUI window end extract it for another methods use
         self.__gui_window = sg.Window('IaDialog', layout, size=WINDOW_SIZE)
         window = self.__gui_window
         
@@ -55,70 +54,68 @@ class IaDialog():
                 break
 
             if event == 'main_button':
-                if main_button.get_text() == self.__main_button_text_list[0]: # button text is Start Talking
-                    self.__user_name = values['name_input']
-                    self.__thread_start_speech2text(noise_range=0.6, _callback=self.__thread_start_process_message)
-                    main_button.Update(text=self.__main_button_text_list[1], disabled=False)
+                if main_button.get_text() == self.__main_button_text_list[0]: # if button text is Start Talking
+                    self.__user_name = values['name_input'] # set username
+                    self.__thread_start_speech2text(noise_range=0.6, _callback=self.__thread_start_process_message) #call speech2text an pass process method callback
+                    main_button.Update(text=self.__main_button_text_list[1], disabled=False) # set button to Stop Talk
                     continue
 
-                if main_button.get_text() == self.__main_button_text_list[1]: # button text is Stop Talking
-                    s.stop_listening()
-                    main_button.Update(text=self.__main_button_text_list[2], disabled=True)
+                if main_button.get_text() == self.__main_button_text_list[1]: # if button text is Stop Talking
+                    s.stop_listening() # stop the voice record
+                    main_button.Update(text=self.__main_button_text_list[2], disabled=True) # set button to sttoping
                     continue
 
-                if main_button.get_text() == self.__main_button_text_list[4]: # button text is Stop Response
-                    self.__audio_stop()
-                    main_button.Update(text=self.__main_button_text_list[1], disabled=False)
-                    continue
-
+            #get volume slider input
             if event == 'volume':
-                self.__audio_channel.set_volume(values['volume']/5)
+                self.__audio_channel.set_volume(values['volume']/5) # slider_value=5 = 1.0 volume
+                                                                    # slider_value=10 = 2.0 volume
+                                                                    # slider_value=1 = 0.2 volume
         window.close()
 
+    #process the text from speech
+    def __process_message(self, message:str):
+        self.__gui_window['main_button'].Update(text=self.__main_button_text_list[3], disabled=True) #change button to Processing
 
-    def __process_message(self, message):
-        self.__gui_window['main_button'].Update(text=self.__main_button_text_list[3], disabled=True)
+        formated_message = self.__format_message(message) #get prompt
+        gpt_response = g.get_response(formated_message) #pass prompt to IA client
 
-        formated_message = self.__format_message(message)
-        gpt_response = g.get_response(formated_message)
-
-        formated_gpt_response = self.__format_gpt_response(gpt_response)
-        audio_file = t.get_voice(formated_gpt_response)
+        formated_gpt_response = self.__format_gpt_response(gpt_response) #format GPT response with pattern
+        audio_file = t.get_voice(formated_gpt_response) #pass only the response for elevenlabs API and get the audio file path
         
-        self.__audio_play_response(audio_file)
+        self.__audio_play_response(audio_file) #play audio
 
         #end of process line
-        self.__gui_window['main_button'].Update(text=self.__main_button_text_list[0], disabled=False)
+        self.__gui_window['main_button'].Update(text=self.__main_button_text_list[0], disabled=False) #change button to Start Talk again
 
-
-    def __thread_start_speech2text(self, noise_range=0.2, _callback=None):
-        print('calling')
+    #start speech2text in another thread
+    def __thread_start_speech2text(self, noise_range:float=0.2, _callback=None) -> None:
         x = threading.Thread(target=s.start, args=[noise_range, _callback])
-        x.daemon = True
+        x.daemon = True # set to kill thread if main thread has killed
         x.start()
-        
-        self.__my_threads.append(x)
 
-    def __thread_start_process_message(self, text):
+    #start the __process_message method in another thread
+    def __thread_start_process_message(self, text:str) -> None:
         x = threading.Thread(target=self.__process_message, args=[text])
-        x.daemon = True
+        x.daemon = True # set to kill thread if main thread has killed
         x.start()
 
-        self.__my_threads.append(x)
-
-
+    #format speech text to IA prompt
     def __format_message(self, message:str) -> str:
+        #if user name field is empty username = friend
         if self.__user_name == '' or self.__user_name == None:
             self.__user_name = 'Friend'
 
+        #if user said nothing, message = Hello!
         user_message = message
         if message == '' or message == None:
             user_message = "Hello!"  
 
+        #If its the benning of dialog or have context
         if len(self.__dialog_history) <= 0:
-            context = 'Empty. Its the beginning.'
+            context = 'Its the beginning.'
         else:
             context = ''
+            #If have context, put it on context variable
             for each in self.__dialog_history:
                 context += f'{self.__user_name}: {each[0]}. You: {each[1]};'
 
@@ -140,7 +137,7 @@ class IaDialog():
                         **Your response:**'''
         return message
         
-
+    #format GPT response with the pattern passed on prompt
     def __format_gpt_response(self, response:str) -> str:
         parentheses_pattern = r'\((.*?)\)'
         bracket_pattern = r'\[(.*?)\]'
@@ -156,18 +153,17 @@ class IaDialog():
         return gpt_response_text
 
 
+    #play audio file
     def __audio_play_response(self, file):
-        self.__playing_audio = True
-
         audio = mixer.Sound(file)
         self.__audio_channel.play(audio)
 
-
+    #stop audio file **UNUSED**
     def __audio_stop(self):
         if self.__playing_audio:
             self.__audio_channel.stop()
 
-
+    #start the application
     def start(self):
         pygame.init()
         mixer.init()

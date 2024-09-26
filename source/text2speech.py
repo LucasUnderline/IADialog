@@ -1,7 +1,5 @@
 import os
 import requests
-from elevenlabs import VoiceSettings
-from elevenlabs.client import ElevenLabs
 
 elevenlabs_api_key = os.environ.get('ELEVENLABS_API_KEY')
 
@@ -13,7 +11,7 @@ class Text2speech:
     self.__request_url = "https://api.elevenlabs.io/v1/text-to-speech/" + self.__voice_id
     self.__output_file_path = 'output_files/elevenlabs_output.mp3'
 
-
+  #get api response
   def __api_request(self, text):
     headers = {
       "Accept": "audio/mpeg",
@@ -36,12 +34,12 @@ class Text2speech:
         if chunk:
           f.write(chunk)
 
-
+  #config the private variables
   def config(self, **kwargs):
     self.__voice_id = kwargs.get('voice_id', 'EXAVITQu4vr4xnSDxMaL')
     self.__output_file_path = kwargs.get('output_file_location', 'output.mp3')
 
-
+  #start the class
   def get_voice(self, text:str) -> str:
     self.__api_request(text)
     return self.__output_file_path
