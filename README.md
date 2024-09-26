@@ -49,5 +49,7 @@ This Python application provides a simple and interactive interface for conversi
 * **Customization:** Feel free to customize the application by modifying the code.
 * **Improvements:** Consider adding features like:
 * **Voice cloning:** Use ElevenLabs' voice cloning feature.
-* **Contextual understanding:** Improve the AI's ability to understand context.
 * **Multiple languages:** Support different languages.
+
+
+*this README has made with IA*
