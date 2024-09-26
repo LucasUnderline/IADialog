@@ -23,7 +23,7 @@ class IaDialog():
         self.__my_threads = []
         self.__user_name = None
         self.__dialog_history = []
-        self.__main_button_text_list = ['Start Talk', 'Stop Talk', 'Stopping', 'Processing', 'Stop Response']
+        self.__main_button_text_list = ['Start Talk', 'Stop Talk', 'Stopping', 'Processing']
         self.__audio_channel = None
         self.__playing_audio = False
         pass
@@ -88,7 +88,7 @@ class IaDialog():
         self.__audio_play_response(audio_file)
 
         #end of process line
-        self.__gui_window['main_button'].Update(text=self.__main_button_text_list[0])
+        self.__gui_window['main_button'].Update(text=self.__main_button_text_list[0], disabled=False)
 
 
     def __thread_start_speech2text(self, noise_range=0.2, _callback=None):
@@ -126,25 +126,17 @@ class IaDialog():
                         **Conversation history:**
                         {context}
 
-                        
                         **Instructions:**
-                        Your response should be concise, coherent with the conversation, and demonstrate empathy and natural language. Imagine you're chatting with a friend. Please keep your response brief and to the point and and keep the conversation flowing. DONT USE EMOJI.
+                        Your response should be concise, coherent with the conversation, and demonstrate empathy and natural language. Imagine you're chatting with a friend. Please keep your response brief and to the point. DONT USE EMOJI.
 
-                        
                         **Response format:**
-                        Enclose your response in quotation marks. after response, include a summary of what the user said in parentheses and a summary of your response in brackets. 
+                        Enclose your response in quotation marks. After the response, include a summary of what the user said in parentheses and a summary of your response in brackets. **Be sure to include key details and specific points from the conversation.**
 
-                        
                         **Examples:**
-                        
+
                         "Hey there, hope you're doing okay. Want to talk about it? Maybe we can figure something out together."
                         (User expressed negative feelings) [AI suggests talking and helping the user]
 
-                        
-                        "Hogwarts Castle is the biggest castle ever, with over a thousand rooms and secret passageways!" 
-                        (User asks about the biggest castle in the world) [Hogwarts Castle: biggest castle, a thousand rooms, secret passageways]
-
-                        
                         **Your response:**'''
         return message
         
@@ -165,8 +157,6 @@ class IaDialog():
 
 
     def __audio_play_response(self, file):
-        self.__gui_window['main_button'].Update(self.__main_button_text_list[4], disabled=False)
-
         self.__playing_audio = True
 
         audio = mixer.Sound(file)
